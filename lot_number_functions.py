@@ -3,6 +3,9 @@ import datetime
 from pathlib import Path
 import xlsxwriter
 import openpyxl
+from openpyxl import Workbook
+from openpyxl.drawing.image import Image
+from openpyxl.styles import Alignment, Font
 
 # Characters used for encode and decode. Modifying will result in lot number generation changes and failure to decode past lot numbers.
 charset = 'ABCDEFGHJKLMNPQRSTVWXYZ23456789#!'
@@ -427,14 +430,21 @@ def printOut(colorString, palletNum, boardString, encodedLot, makeDate):
     #print(workbook_path)
     
     # Create the workbook
-    workbook = xlsxwriter.Workbook(workbook_path)
+    #workbook = xlsxwriter.Workbook(workbook_path)
+    workbook = Workbook()
     
     # Add a worksheet to the workbook
-    worksheet = workbook.add_worksheet()
+    #worksheet = workbook.add_worksheet()
+    worksheet = workbook.active
     
     # Set the margins for the worksheet
-    worksheet.set_margins(left=0.25, right=0.25)
-    
+    # Set the margins for the worksheet
+    worksheet.page_margins.left = 0.35
+    worksheet.page_margins.right = 0.1
+    #set top and bottom margins
+    worksheet.page_margins.top = 0.25
+    worksheet.page_margins.bottom = 0.25
+
     # Define the font sizes for different colors
     font_sizes_color = {
         "WEATHERED WOOD": 60,
@@ -472,49 +482,36 @@ def printOut(colorString, palletNum, boardString, encodedLot, makeDate):
     }
     
     
+
     # Create format for the dimension text
-    size1 = workbook.add_format()
-    size1.set_font_size(font_sizes_dimensions.get(boardString))
-    size1.set_align('center')
-    size1.set_align('vcenter')
-    
+    size1 = Font(size=font_sizes_dimensions.get(boardString))
+    size1.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
     # Create format for the color text
-    size2 = workbook.add_format()
-    size2.set_font_size(font_sizes_color.get(color_string))
-    size2.set_align('center')
-    size2.set_bold()
-    
+    size2 = Font(size=font_sizes_color.get(color_string), bold=True)
+    size2.alignment = Alignment(horizontal='center')
+
     # Create format for the "Date" and "Lot" text
-    size3 = workbook.add_format()
-    size3.set_font_size(36)
-    size3.set_underline(1)
-    size3.set_align('right')
-    size3.set_bold()
-    
-    # Create format *Unused*
-    size4 = workbook.add_format()
-    size4.set_font_size(36)
-    size4.set_underline(1)
-    size4.set_align('left')
-    size4.set_bold()
-    
+    size3 = Font(size=36, underline='single', bold=True)
+    size3.alignment = Alignment(horizontal='right')
+
     # Define the row heights for the worksheet
-    row_heights = [105, 140, 85, 40, 105, 140, 85]
-    
+    row_heights = [90, 110, 90, 125, 90, 100, 90, 75]
+
     # Define the column widths for the worksheet
     column_widths = [42, 10, 42]
-    
+
     # Set the row heights for the worksheet
     for row, height in enumerate(row_heights):
-        worksheet.set_row(row, height)
-    
+        worksheet.row_dimensions[row+1].height = height
+
     # Set the column widths for the worksheet
     for col, width in enumerate(column_widths):
-        worksheet.set_column(col, col, width)
-    
+        worksheet.column_dimensions[chr(65+col)].width = width
+
     # Prepare the "____ - <boardString>" text
     dims = "____ - {}".format(boardString)
-    
+
     # Store the color text
     color = color_string
 
@@ -524,18 +521,51 @@ def printOut(colorString, palletNum, boardString, encodedLot, makeDate):
     # Prepare the lot text
     lot = "Lot #: {}".format(encodedLot)
 
-    # Write data to specified excel cell with prepared formating
-    worksheet.write('B1', dims, size1)
-    worksheet.write('B2', color, size2)
-    worksheet.write('A3', date, size3)
-    worksheet.write('C3', lot, size3)
-    worksheet.write('B5', dims, size1)
-    worksheet.write('B6', color, size2)
-    worksheet.write('A7', date, size3)
-    worksheet.write('C7', lot, size3)
+    # Add image to cell B1
+    logo = openpyxl.drawing.image.Image(r"\\lcc-fsqb-01.lcc.local\Shares\\Green Fox\\QC\\Photos\\Green Fox Plastics Logo3.jpg")
+    logo2 = openpyxl.drawing.image.Image(r"\\lcc-fsqb-01.lcc.local\Shares\\Green Fox\\QC\\Photos\\Green Fox Plastics Logo4.jpg")
+    # Resize the image
+    logo.width = 708
+    logo.height = 105
+    # Resize the image
+    logo2.width = 708
+    logo2.height = 105
 
-    # Save and close workbook
-    workbook.close()
+    worksheet.add_image(logo, 'A1')
+    worksheet.add_image(logo2, 'A5')
+
+    # Write data to specified excel cell with prepared formatting
+    worksheet['B2'].font = size1
+    worksheet['B2'].value = dims
+    worksheet['B3'].font = size2
+    worksheet['B3'].value = color
+    worksheet['A4'].font = size3
+    worksheet['A4'].value = date
+    worksheet['C4'].font = size3
+    worksheet['C4'].value = lot
+    worksheet['B6'].font = size1
+    worksheet['B6'].value = dims
+    worksheet['B7'].font = size2
+    worksheet['B7'].value = color
+    worksheet['A8'].font = size3
+    worksheet['A8'].value = date
+    worksheet['C8'].font = size3
+    worksheet['C8'].value = lot
+
+    worksheet['A1'].alignment = Alignment(horizontal='center', vertical='center')
+    worksheet['A5'].alignment = Alignment(horizontal='center', vertical='center')
+
+    worksheet['B2'].alignment = Alignment(horizontal='center', vertical='center')
+    worksheet['B6'].alignment = Alignment(horizontal='center', vertical='center')
+    worksheet['B3'].alignment = Alignment(horizontal='center', vertical='center')
+    worksheet['B7'].alignment = Alignment(horizontal='center', vertical='center')
+
+    worksheet['A4'].alignment = Alignment(horizontal='left', vertical='top')
+    worksheet['C4'].alignment = Alignment(horizontal='center', vertical='top')
+    worksheet['A8'].alignment = Alignment(horizontal='left', vertical='center')
+    worksheet['C8'].alignment = Alignment(horizontal='center', vertical='center')
+    # Save the workbook
+    workbook.save(workbook_path)
    
 #used to increment date by 1 while chacking for a weekend
 #comment out noted section if friday has production
